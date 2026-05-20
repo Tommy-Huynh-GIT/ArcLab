@@ -104,6 +104,48 @@ describe("/api/sessions", () => {
     });
   });
 
+  it("defaults the session title when title is omitted", async () => {
+    const report = {
+      overallScore: 82,
+      rank: "A",
+      summary: "Balanced mechanics.",
+      metrics: [],
+      keyFrames: [],
+    };
+    const savedSession = {
+      id: "session_default_title",
+      profileId: "profile_1",
+      title: "Free throw session",
+      report: {
+        id: "report_default_title",
+        ...report,
+      },
+    };
+    scoreFreeThrow.mockReturnValue(report);
+    sessionCreate.mockResolvedValue(savedSession);
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          profileId: "profile_1",
+          pose: balancedFreeThrow,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({ session: savedSession });
+    expect(sessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: "Free throw session",
+        }),
+      }),
+    );
+  });
+
   it("rejects malformed payloads before scoring", async () => {
     const { POST } = await import("./route");
     const response = await POST(

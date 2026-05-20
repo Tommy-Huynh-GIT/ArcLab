@@ -9,6 +9,8 @@ type SessionPayload = {
   pose: PoseAnalysisInput;
 };
 
+const DEFAULT_SESSION_TITLE = "Free throw session";
+
 function payloadRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body)
     ? (body as Record<string, unknown>)
@@ -19,15 +21,14 @@ function validatePayload(body: unknown): { payload?: SessionPayload; error?: str
   const payload = payloadRecord(body);
   const profileId =
     typeof payload.profileId === "string" ? payload.profileId.trim() : "";
-  const title = typeof payload.title === "string" ? payload.title.trim() : "";
+  const title =
+    typeof payload.title === "string"
+      ? payload.title.trim() || DEFAULT_SESSION_TITLE
+      : DEFAULT_SESSION_TITLE;
   const pose = payload.pose;
 
   if (!profileId) {
     return { error: "Profile id is required." };
-  }
-
-  if (!title) {
-    return { error: "Session title is required." };
   }
 
   if (!pose || typeof pose !== "object" || Array.isArray(pose)) {
