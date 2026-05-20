@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Profile {
+  id         String     @id @default(cuid())
+  name       String
+  handedness Handedness @default(RIGHT)
+  heightCm   Int?
+  createdAt  DateTime   @default(now())
+  sessions   Session[]
+}
+
+model Session {
+  id        String          @id @default(cuid())
+  profileId String
+  profile   Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime        @default(now())
+  report    AnalysisReport?
+}
+
+model AnalysisReport {
+  id           String     @id @default(cuid())
+  sessionId    String     @unique
+  session      Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  overallScore Int
+  rank         String
+  summary      String
+  createdAt    DateTime   @default(now())
+  metrics      Metric[]
+  keyFrames    KeyFrame[]
+}
+
+model Metric {
+  id       String         @id @default(cuid())
+  reportId String
+  report   AnalysisReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  name     String
+  score    Int
+  value    Float
+  feedback String
+  drill    String
+}
+
+model KeyFrame {
+  id          String         @id @default(cuid())
+  reportId    String
+  report      AnalysisReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  label       String
+  timestampMs Int
+}
+
+enum Handedness {
+  LEFT
+  RIGHT
+}
