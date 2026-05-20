@@ -50,6 +50,22 @@ describe("/api/profiles", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("rejects malformed JSON with a controlled bad request response", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/profiles", {
+        method: "POST",
+        body: "{",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid JSON payload.",
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("creates a right-handed profile by default", async () => {
     const profile = { id: "profile_2", name: "Jordan", handedness: "RIGHT" };
     create.mockResolvedValue(profile);

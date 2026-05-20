@@ -60,4 +60,109 @@ describe("ProfilePicker", () => {
       body: JSON.stringify({ name: "Jordan", handedness: "LEFT" }),
     });
   });
+
+  it("shows the API error when profile creation is rejected", async () => {
+    const onSelect = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: () =>
+          Promise.resolve({
+            error: "Profile name must be at least 2 characters.",
+          }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProfilePicker onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    expect(
+      await screen.findByText("Profile name must be at least 2 characters."),
+    ).toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("shows a fallback error when profile creation returns invalid JSON", async () => {
+    const onSelect = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.reject(new Error("bad json")),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProfilePicker onSelect={onSelect} />);
+
+    fireEvent.change(screen.getByLabelText(/player name/i), {
+      target: { value: "Jordan" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    expect(
+      await screen.findByText("Unable to create profile."),
+    ).toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("shows a fallback error when profile creation returns no valid profile", async () => {
+    const onSelect = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ profile: { id: "profile_3" } }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProfilePicker onSelect={onSelect} />);
+
+    fireEvent.change(screen.getByLabelText(/player name/i), {
+      target: { value: "Jordan" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    expect(
+      await screen.findByText("Unable to create profile."),
+    ).toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("shows a fallback error when profile creation cannot reach the API", async () => {
+    const onSelect = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+      .mockRejectedValueOnce(new Error("offline"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProfilePicker onSelect={onSelect} />);
+
+    fireEvent.change(screen.getByLabelText(/player name/i), {
+      target: { value: "Jordan" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    expect(
+      await screen.findByText("Unable to create profile."),
+    ).toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });

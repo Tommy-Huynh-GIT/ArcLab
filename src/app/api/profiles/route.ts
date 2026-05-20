@@ -10,9 +10,24 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const handedness = body.handedness === "LEFT" ? "LEFT" : "RIGHT";
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON payload." },
+      { status: 400 },
+    );
+  }
+
+  const payload = body && typeof body === "object" ? body : {};
+  const name =
+    "name" in payload && typeof payload.name === "string"
+      ? payload.name.trim()
+      : "";
+  const handedness =
+    "handedness" in payload && payload.handedness === "LEFT" ? "LEFT" : "RIGHT";
 
   if (name.length < 2) {
     return NextResponse.json(

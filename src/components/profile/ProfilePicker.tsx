@@ -12,6 +12,27 @@ type Props = {
   onSelect: (profile: Profile) => void;
 };
 
+function isProfile(value: unknown): value is Profile {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const profile = value as Record<string, unknown>;
+  return (
+    typeof profile.id === "string" &&
+    typeof profile.name === "string" &&
+    (profile.handedness === "LEFT" || profile.handedness === "RIGHT")
+  );
+}
+
+async function readJson(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export function ProfilePicker({ onSelect }: Props) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [name, setName] = useState("");
@@ -28,22 +49,43 @@ export function ProfilePicker({ onSelect }: Props) {
   async function createProfile() {
     setError("");
 
-    const response = await fetch("/api/profiles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, handedness }),
-    });
+    try {
+      const response = await fetch("/api/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, handedness }),
+      });
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? "Unable to create profile.");
-      return;
+      const data = await readJson(response);
+
+      if (!response.ok) {
+        setError(
+          data &&
+            typeof data === "object" &&
+            "error" in data &&
+            typeof data.error === "string"
+            ? data.error
+            : "Unable to create profile.",
+        );
+        return;
+      }
+
+      if (!data || typeof data !== "object" || !("profile" in data)) {
+        setError("Unable to create profile.");
+        return;
+      }
+
+      if (!isProfile(data.profile)) {
+        setError("Unable to create profile.");
+        return;
+      }
+
+      setProfiles((current) => [data.profile, ...current]);
+      setName("");
+      onSelect(data.profile);
+    } catch {
+      setError("Unable to create profile.");
     }
-
-    const data = await response.json();
-    setProfiles((current) => [data.profile, ...current]);
-    setName("");
-    onSelect(data.profile);
   }
 
   return (
