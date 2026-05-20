@@ -150,4 +150,72 @@ describe("Home", () => {
     expect(await screen.findByText("Strong balance and follow-through.")).toBeInTheDocument();
     expect(screen.getByText("88")).toBeInTheDocument();
   });
+
+  it("shows API errors without leaving the saving status visible", async () => {
+    extractPoseLandmarks.mockResolvedValue(balancedFreeThrow);
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = input.toString();
+
+      if (url === "/api/profiles") {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              profiles: [
+                { id: "profile_1", name: "Maya", handedness: "LEFT" },
+              ],
+            }),
+        });
+      }
+
+      return Promise.resolve({
+        ok: false,
+        json: () =>
+          Promise.resolve({
+            error: "At least four pose frames are required for scoring.",
+          }),
+      });
+    });
+
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /maya/i }));
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: {
+        files: [
+          new File(["video"], "maya-free-throw.webm", {
+            type: "video/webm",
+          }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    expect(
+      await screen.findAllByText("At least four pose frames are required for scoring."),
+    ).toHaveLength(2);
+    expect(screen.queryByText("Saving coaching report...")).not.toBeInTheDocument();
+    expect(screen.queryByText("Extracting pose landmarks...")).not.toBeInTheDocument();
+  });
+
+  it("shows extraction errors without leaving the extracting status visible", async () => {
+    extractPoseLandmarks.mockRejectedValue(new Error("No pose detected."));
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /maya/i }));
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: {
+        files: [
+          new File(["video"], "maya-free-throw.webm", {
+            type: "video/webm",
+          }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    expect(await screen.findAllByText("No pose detected.")).toHaveLength(2);
+    expect(screen.queryByText("Extracting pose landmarks...")).not.toBeInTheDocument();
+    expect(screen.queryByText("Saving coaching report...")).not.toBeInTheDocument();
+  });
 });

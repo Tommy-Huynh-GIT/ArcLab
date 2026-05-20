@@ -59,50 +59,55 @@ export default function Home() {
 
   async function saveAnalyzedSession(file: File, video: HTMLVideoElement) {
     if (!selectedProfile) {
-      throw new Error("Choose a profile before analyzing a clip.");
+      const message = "Choose a profile before analyzing a clip.";
+      setAnalysisStatus("");
+      setAnalysisError(message);
+      throw new Error(message);
     }
 
     setSavedSession(null);
     setAnalysisError("");
     setAnalysisStatus("Extracting pose landmarks...");
 
-    const pose = await extractPoseLandmarks(video, {
-      handedness: selectedProfile.handedness,
-    });
+    try {
+      const pose = await extractPoseLandmarks(video, {
+        handedness: selectedProfile.handedness,
+      });
 
-    setAnalysisStatus("Saving coaching report...");
+      setAnalysisStatus("Saving coaching report...");
 
-    const response = await fetch("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        profileId: selectedProfile.id,
-        title: file.name,
-        pose,
-      }),
-    });
-    const data = await readJson(response);
+      const response = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profileId: selectedProfile.id,
+          title: file.name,
+          pose,
+        }),
+      });
+      const data = await readJson(response);
 
-    if (!response.ok) {
-      const message = readApiError(data, "Unable to save analyzed session.");
+      if (!response.ok) {
+        throw new Error(readApiError(data, "Unable to save analyzed session."));
+      }
+
+      if (!data || typeof data !== "object" || !("session" in data)) {
+        throw new Error("Unable to read saved session.");
+      }
+
+      if (!isSavedSession(data.session)) {
+        throw new Error("Saved session response was malformed.");
+      }
+
+      setSavedSession(data.session);
+      setAnalysisStatus("Report saved.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to analyze this video.";
+      setAnalysisStatus("");
       setAnalysisError(message);
       throw new Error(message);
     }
-
-    if (!data || typeof data !== "object" || !("session" in data)) {
-      const message = "Unable to read saved session.";
-      setAnalysisError(message);
-      throw new Error(message);
-    }
-
-    if (!isSavedSession(data.session)) {
-      const message = "Saved session response was malformed.";
-      setAnalysisError(message);
-      throw new Error(message);
-    }
-
-    setSavedSession(data.session);
-    setAnalysisStatus("Report saved.");
   }
 
   return (
