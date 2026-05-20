@@ -70,6 +70,7 @@ export default function Home() {
 
         {selectedProfile ? (
           <VideoUploadPanel
+            key={selectedProfile.id}
             onAnalyze={(file) => setQueuedFileName(file.name)}
           />
         ) : null}
