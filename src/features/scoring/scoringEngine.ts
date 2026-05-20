@@ -4,18 +4,19 @@ import type {
   PoseFrame,
   PoseLandmarkName,
 } from "@/features/pose/types";
-import type { CoachingReport, KeyFrame, MetricScore, Rank } from "./types";
-
-const MINIMUM_FRAMES = 4;
-const MINIMUM_VISIBILITY = 0.5;
-
-function clamp(value: number, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function clampScore(score: number) {
-  return Math.round(clamp(score));
-}
+import { feedbackForMetric } from "./feedback";
+import {
+  average,
+  clampScore,
+  ensureFiniteMetric,
+  horizontalDistance,
+  scoreFromError,
+} from "./geometry";
+import type { CoachingReport, KeyFrame, MetricName, MetricScore, Rank } from "./types";
+import {
+  MINIMUM_VISIBILITY,
+  validatePoseAnalysisInput,
+} from "./validation";
 
 function rankFor(score: number): Rank {
   if (score >= 90) {
@@ -50,25 +51,29 @@ function visibleLandmark(
   return landmark;
 }
 
-function scoreFromError(error: number, tolerance: number) {
-  return clampScore(100 - (error / tolerance) * 100);
-}
-
 function makeMetric(
-  name: MetricScore["name"],
+  name: MetricName,
   label: string,
   score: number,
   value: number,
-  feedback: string,
-  drill: string,
 ): MetricScore {
+  const clampedScore = clampScore(score);
+  const roundedValue = Number(value.toFixed(3));
+  ensureFiniteMetric(clampedScore, name);
+  ensureFiniteMetric(roundedValue, name);
+  const feedback = feedbackForMetric({
+    name,
+    score: clampedScore,
+    value: roundedValue,
+  });
+
   return {
     name,
     label,
-    score: clampScore(score),
-    value: Number(value.toFixed(3)),
-    feedback,
-    drill,
+    score: clampedScore,
+    value: roundedValue,
+    feedback: feedback.feedback,
+    drill: feedback.drill,
   };
 }
 
@@ -91,9 +96,7 @@ function keyFramesFor(frames: PoseFrame[]) {
 }
 
 export function scoreFreeThrow(input: PoseAnalysisInput): CoachingReport {
-  if (input.frames.length < MINIMUM_FRAMES) {
-    throw new Error("At least four pose frames are required for scoring.");
-  }
+  validatePoseAnalysisInput(input);
 
   const { setup, dip, release, followThrough } = keyFramesFor(input.frames);
   const shooterSide = shootingSide(input);
@@ -126,18 +129,22 @@ export function scoreFreeThrow(input: PoseAnalysisInput): CoachingReport {
     `${shooterSide}_wrist` as PoseLandmarkName,
   );
 
-  const shoulderWidth = Math.abs(rightShoulder.x - leftShoulder.x);
-  const stanceWidth = Math.abs(rightAnkle.x - leftAnkle.x);
+  const shoulderWidth = horizontalDistance(rightShoulder, leftShoulder);
+  if (shoulderWidth < 0.05) {
+    throw new Error("Shoulder width is too small to score stance reliably.");
+  }
+
+  const stanceWidth = horizontalDistance(rightAnkle, leftAnkle);
   const stanceRatio = stanceWidth / shoulderWidth;
   const stanceScore = scoreFromError(Math.abs(stanceRatio - 1.25), 0.35);
 
-  const ankleCenter = (leftAnkle.x + rightAnkle.x) / 2;
-  const kneeCenter = (leftKnee.x + rightKnee.x) / 2;
-  const kneeOffset = Math.abs(kneeCenter - ankleCenter);
+  const leftKneeOffset = horizontalDistance(leftKnee, leftAnkle);
+  const rightKneeOffset = horizontalDistance(rightKnee, rightAnkle);
+  const kneeOffset = average([leftKneeOffset, rightKneeOffset]);
   const kneeScore = scoreFromError(kneeOffset, 0.08);
 
-  const elbowOffset = Math.abs(shootingElbow.x - shootingShoulder.x);
-  const guideDistance = Math.abs(guideWrist.x - shootingWrist.x);
+  const elbowOffset = horizontalDistance(shootingElbow, shootingShoulder);
+  const guideDistance = horizontalDistance(guideWrist, shootingWrist);
   const elbowScore =
     scoreFromError(elbowOffset, 0.12) * 0.8 +
     scoreFromError(Math.max(0, guideDistance - 0.18), 0.16) * 0.2;
@@ -157,40 +164,30 @@ export function scoreFreeThrow(input: PoseAnalysisInput): CoachingReport {
       "Stance width",
       stanceScore,
       stanceRatio,
-      "Your feet are close to shoulder-plus width, which gives the shot a steady base.",
-      "Mark shoulder width on the floor and start each rep just outside those marks.",
     ),
     makeMetric(
       "kneeAlignment",
       "Knee alignment",
       kneeScore,
       kneeOffset,
-      "Your knees stay centered over the stance through the dip.",
-      "Pause for one count at the dip and check that both knees track over the feet.",
     ),
     makeMetric(
       "elbowAlignment",
       "Elbow alignment",
       elbowScore,
       elbowOffset,
-      "Your shooting elbow stays near the shooting-side shoulder line.",
-      "Take close one-hand form shots and keep the elbow under the ball.",
     ),
     makeMetric(
       "armExtension",
       "Arm extension",
       armExtensionScore,
       armExtension,
-      "Your release has a clear upward reach without forcing the arm past its line.",
-      "Hold the release until the ball reaches the rim, then reset calmly.",
     ),
     makeMetric(
       "followThrough",
       "Follow-through",
       followThroughScore,
       followThroughHold,
-      "Your shooting wrist remains high after release, which suggests a repeatable finish.",
-      "Make 20 free throws while holding the finish for two seconds.",
     ),
   ];
 
