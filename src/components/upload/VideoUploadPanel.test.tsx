@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VideoUploadPanel } from "./VideoUploadPanel";
 
@@ -60,6 +60,44 @@ describe("VideoUploadPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze/i }));
 
     expect(onAnalyze).toHaveBeenCalledWith(file);
+  });
+
+  it("shows async analysis state while onAnalyze is running", async () => {
+    let finishAnalysis: () => void = () => {};
+    const onAnalyze = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishAnalysis = resolve;
+        }),
+    );
+    const file = new File(["video"], "front-view.mp4", { type: "video/mp4" });
+
+    render(<VideoUploadPanel onAnalyze={onAnalyze} />);
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /analyze/i }));
+
+    expect(screen.getByRole("button", { name: /analyzing/i })).toBeDisabled();
+
+    finishAnalysis();
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /analyze/i })).toBeEnabled(),
+    );
+  });
+
+  it("shows an analysis error when onAnalyze fails", async () => {
+    const onAnalyze = vi.fn().mockRejectedValue(new Error("Pose extraction failed."));
+    const file = new File(["video"], "front-view.mp4", { type: "video/mp4" });
+
+    render(<VideoUploadPanel onAnalyze={onAnalyze} />);
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /analyze/i }));
+
+    expect(await screen.findByText("Pose extraction failed.")).toBeInTheDocument();
   });
 
   it("cleans up object URLs when the selected file changes and on unmount", () => {

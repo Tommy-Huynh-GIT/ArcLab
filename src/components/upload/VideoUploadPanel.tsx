@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Props = {
-  onAnalyze: (file: File) => void;
+  onAnalyze: (file: File) => Promise<void> | void;
 };
 
 const acceptedVideoTypes = "video/mp4,video/quicktime,video/webm";
@@ -13,6 +13,8 @@ export function VideoUploadPanel({ onAnalyze }: Props) {
     file: File;
     previewUrl: string;
   } | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
 
   useEffect(() => {
     if (!selectedVideo) return;
@@ -24,14 +26,28 @@ export function VideoUploadPanel({ onAnalyze }: Props) {
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    setAnalysisError("");
     setSelectedVideo(
       file ? { file, previewUrl: URL.createObjectURL(file) } : null,
     );
   }
 
-  function handleAnalyze() {
-    if (selectedVideo) {
-      onAnalyze(selectedVideo.file);
+  async function handleAnalyze() {
+    if (!selectedVideo || isAnalyzing) {
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError("");
+
+    try {
+      await onAnalyze(selectedVideo.file);
+    } catch (error) {
+      setAnalysisError(
+        error instanceof Error ? error.message : "Unable to analyze this video.",
+      );
+    } finally {
+      setIsAnalyzing(false);
     }
   }
 
@@ -74,8 +90,18 @@ export function VideoUploadPanel({ onAnalyze }: Props) {
         />
       ) : null}
 
-      <button disabled={!selectedVideo} onClick={handleAnalyze} type="button">
-        Analyze
+      {analysisError ? (
+        <p className="upload-error" role="alert">
+          {analysisError}
+        </p>
+      ) : null}
+
+      <button
+        disabled={!selectedVideo || isAnalyzing}
+        onClick={handleAnalyze}
+        type="button"
+      >
+        {isAnalyzing ? "Analyzing..." : "Analyze"}
       </button>
     </section>
   );
