@@ -5,9 +5,16 @@ import {
   ProfilePicker,
   type Profile,
 } from "@/components/profile/ProfilePicker";
+import { VideoUploadPanel } from "@/components/upload/VideoUploadPanel";
 
 export default function Home() {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [queuedFileName, setQueuedFileName] = useState("");
+
+  function handleSelectProfile(profile: Profile) {
+    setSelectedProfile(profile);
+    setQueuedFileName("");
+  }
 
   return (
     <main className="app-shell">
@@ -15,13 +22,13 @@ export default function Home() {
         <p className="eyebrow">ArcLab MVP</p>
         <h1>Free throw form analysis with explainable coaching reports.</h1>
         <p className="hero-copy">
-          Upload a front-facing free throw clip, analyze core mechanics, and
-          review a saved scorecard built for focused practice.
+          Prepare front-facing free throw clips for ArcLab. Upload previews are
+          ready now, with explainable scoring reports coming next.
         </p>
       </section>
 
       <section className="dashboard-grid" aria-label="ArcLab demo dashboard">
-        <ProfilePicker onSelect={setSelectedProfile} />
+        <ProfilePicker onSelect={handleSelectProfile} />
 
         <section className="panel selected-profile-panel">
           <div className="panel-heading">
@@ -34,7 +41,7 @@ export default function Home() {
           </div>
           <p className="muted">
             {selectedProfile
-              ? "Video upload and pose analysis will appear here in the next ArcLab step."
+              ? "Upload a front-facing free throw clip to queue a mock analysis preview."
               : "Choose or create a demo player before uploading a free throw clip."}
           </p>
           {selectedProfile ? (
@@ -48,7 +55,25 @@ export default function Home() {
               </small>
             </div>
           ) : null}
+
+          {queuedFileName ? (
+            <div className="analysis-status-panel" aria-live="polite">
+              <span>Status</span>
+              <strong>Mock analysis queued for {queuedFileName}</strong>
+              <p>
+                No scoring engine has been called yet. This is a local preview
+                for the upload flow.
+              </p>
+            </div>
+          ) : null}
         </section>
+
+        {selectedProfile ? (
+          <VideoUploadPanel
+            key={selectedProfile.id}
+            onAnalyze={(file) => setQueuedFileName(file.name)}
+          />
+        ) : null}
       </section>
     </main>
   );

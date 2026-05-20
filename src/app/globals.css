@@ -208,6 +208,73 @@ select:focus-visible {
   font-size: 24px;
 }
 
+.upload-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 18px;
+}
+
+.video-file-picker {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.video-file-picker input {
+  cursor: pointer;
+}
+
+.selected-file,
+.analysis-status-panel {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  border-left: 4px solid var(--accent-2);
+  background: var(--surface-2);
+  padding: 16px;
+}
+
+.selected-file span,
+.analysis-status-panel span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.selected-file strong,
+.analysis-status-panel strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.analysis-status-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.upload-empty {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.video-preview {
+  width: 100%;
+  max-height: 440px;
+  border: 1px solid var(--line);
+  background: #050507;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+button:disabled:hover {
+  filter: none;
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding: 24px;
@@ -228,5 +295,9 @@ select:focus-visible {
   .profile-option {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .upload-panel {
+    gap: 16px;
   }
 }
