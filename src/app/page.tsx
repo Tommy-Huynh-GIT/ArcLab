@@ -22,8 +22,8 @@ export default function Home() {
         <p className="eyebrow">ArcLab MVP</p>
         <h1>Free throw form analysis with explainable coaching reports.</h1>
         <p className="hero-copy">
-          Upload a front-facing free throw clip, analyze core mechanics, and
-          review a saved scorecard built for focused practice.
+          Prepare front-facing free throw clips for ArcLab. Upload previews are
+          ready now, with explainable scoring reports coming next.
         </p>
       </section>
 
