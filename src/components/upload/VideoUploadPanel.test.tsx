@@ -79,6 +79,7 @@ describe("VideoUploadPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze/i }));
 
     expect(screen.getByRole("button", { name: /analyzing/i })).toBeDisabled();
+    expect(screen.getByLabelText(/free throw clip/i)).toBeDisabled();
 
     finishAnalysis();
 

@@ -30,10 +30,11 @@ type ExtractPoseLandmarksOptions = {
 
 const DEFAULT_SAMPLE_COUNT = 12;
 const DEFAULT_MINIMUM_FRAMES = 4;
+const MEDIAPIPE_TASKS_VISION_VERSION = "0.10.35";
 const WASM_ASSET_PATH =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm";
+  `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_TASKS_VISION_VERSION}/wasm`;
 const MODEL_ASSET_PATH =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task";
+  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
 const landmarkIndexMap = [
   [11, "left_shoulder"],
@@ -50,27 +51,37 @@ const landmarkIndexMap = [
   [28, "right_ankle"],
 ] satisfies Array<[number, PoseLandmarkName]>;
 
-let poseLandmarkerPromise: Promise<PoseLandmarkerInstance> | null = null;
+function createCachedPoseLandmarker(
+  loadPoseLandmarker: () => Promise<PoseLandmarkerInstance>,
+) {
+  let cachedPromise: Promise<PoseLandmarkerInstance> | null = null;
 
-async function getPoseLandmarker() {
-  if (!poseLandmarkerPromise) {
-    poseLandmarkerPromise = import("@mediapipe/tasks-vision").then(
-      async ({ FilesetResolver, PoseLandmarker }) => {
-        const vision = await FilesetResolver.forVisionTasks(WASM_ASSET_PATH);
+  return async () => {
+    if (!cachedPromise) {
+      cachedPromise = loadPoseLandmarker().catch((error) => {
+        cachedPromise = null;
+        throw error;
+      });
+    }
 
-        return PoseLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: MODEL_ASSET_PATH,
-          },
-          runningMode: "VIDEO",
-          numPoses: 1,
-        });
-      },
-    );
-  }
-
-  return poseLandmarkerPromise;
+    return cachedPromise;
+  };
 }
+
+const getPoseLandmarker = createCachedPoseLandmarker(async () => {
+  const { FilesetResolver, PoseLandmarker } = await import(
+    "@mediapipe/tasks-vision"
+  );
+  const vision = await FilesetResolver.forVisionTasks(WASM_ASSET_PATH);
+
+  return PoseLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: MODEL_ASSET_PATH,
+    },
+    runningMode: "VIDEO",
+    numPoses: 1,
+  });
+});
 
 function normalizePoseLandmarks(
   landmarks: MediaPipePoseLandmark[],
@@ -102,12 +113,14 @@ function clampNormalizedCoordinate(value: number) {
 }
 
 function sampleTimestamps(durationMs: number, sampleCount: number) {
+  const maxTimestampMs = Math.max(0, durationMs - 1);
+
   if (sampleCount <= 1) {
     return [0];
   }
 
   return Array.from({ length: sampleCount }, (_, index) =>
-    Math.round((durationMs / (sampleCount - 1)) * index),
+    Math.round((maxTimestampMs / (sampleCount - 1)) * index),
   );
 }
 
@@ -189,3 +202,9 @@ export async function extractPoseLandmarks(
 }
 
 export const __normalizePoseLandmarksForTest = normalizePoseLandmarks;
+export const __sampleTimestampsForTest = sampleTimestamps;
+export const __createCachedPoseLandmarkerForTest = createCachedPoseLandmarker;
+export const __POSE_ASSET_URLS_FOR_TEST = {
+  wasm: WASM_ASSET_PATH,
+  model: MODEL_ASSET_PATH,
+};

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { __normalizePoseLandmarksForTest } from "./extractPoseLandmarks";
+import {
+  __createCachedPoseLandmarkerForTest,
+  __normalizePoseLandmarksForTest,
+  __POSE_ASSET_URLS_FOR_TEST,
+  __sampleTimestampsForTest,
+} from "./extractPoseLandmarks";
 
 describe("__normalizePoseLandmarksForTest", () => {
   it("maps MediaPipe pose landmark indexes to ArcLab landmark names", () => {
@@ -33,5 +38,46 @@ describe("__normalizePoseLandmarksForTest", () => {
     }));
 
     expect(__normalizePoseLandmarksForTest(incompleteLandmarks)).toBeNull();
+  });
+});
+
+describe("pose extraction asset URLs", () => {
+  it("pins the MediaPipe WASM package URL to the installed package version", () => {
+    expect(__POSE_ASSET_URLS_FOR_TEST.wasm).toContain(
+      "@mediapipe/tasks-vision@0.10.35/wasm",
+    );
+    expect(__POSE_ASSET_URLS_FOR_TEST.wasm).not.toContain("@latest");
+  });
+
+  it("keeps model URL ownership explicit", () => {
+    expect(__POSE_ASSET_URLS_FOR_TEST.model).toContain("pose_landmarker_lite.task");
+    expect(__POSE_ASSET_URLS_FOR_TEST.model).not.toContain("/latest/");
+  });
+});
+
+describe("__sampleTimestampsForTest", () => {
+  it("samples the final frame below the video duration to avoid seeking EOF", () => {
+    expect(__sampleTimestampsForTest(1000, 5)).toEqual([0, 250, 500, 749, 999]);
+  });
+});
+
+describe("__createCachedPoseLandmarkerForTest", () => {
+  it("retries initialization after a rejected load", async () => {
+    const firstFailure = new Error("Transient MediaPipe load failure.");
+    const landmarker = { detectForVideo: () => ({ landmarks: [] }) };
+    let attempts = 0;
+    const getLandmarker = __createCachedPoseLandmarkerForTest(async () => {
+      attempts += 1;
+
+      if (attempts === 1) {
+        throw firstFailure;
+      }
+
+      return landmarker;
+    });
+
+    await expect(getLandmarker()).rejects.toThrow(firstFailure);
+    await expect(getLandmarker()).resolves.toBe(landmarker);
+    expect(attempts).toBe(2);
   });
 });

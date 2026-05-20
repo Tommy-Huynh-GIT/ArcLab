@@ -67,6 +67,7 @@ export function VideoUploadPanel({ onAnalyze }: Props) {
         <span>Free throw clip</span>
         <input
           accept={acceptedVideoTypes}
+          disabled={isAnalyzing}
           onChange={handleFileChange}
           type="file"
         />
