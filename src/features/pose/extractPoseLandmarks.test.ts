@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   __createCachedPoseLandmarkerForTest,
   __hasUsableVideoFrameForTest,
+  __mediaPipeTimestampsForTest,
   __normalizePoseLandmarksForTest,
   __POSE_ASSET_URLS_FOR_TEST,
   __sampleTimestampsForTest,
@@ -59,6 +60,18 @@ describe("pose extraction asset URLs", () => {
 describe("__sampleTimestampsForTest", () => {
   it("samples the final frame below the video duration to avoid seeking EOF", () => {
     expect(__sampleTimestampsForTest(1000, 5)).toEqual([0, 250, 500, 749, 999]);
+  });
+});
+
+describe("__mediaPipeTimestampsForTest", () => {
+  it("keeps MediaPipe timestamps increasing across separate analyses", () => {
+    const firstPass = __mediaPipeTimestampsForTest([0, 250, 500], 0);
+    const secondPass = __mediaPipeTimestampsForTest([0, 250, 500], firstPass.next);
+
+    expect(firstPass.timestamps).toEqual([0, 250, 500]);
+    expect(firstPass.next).toBe(501);
+    expect(secondPass.timestamps).toEqual([501, 751, 1001]);
+    expect(secondPass.next).toBe(1002);
   });
 });
 

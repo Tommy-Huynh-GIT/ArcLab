@@ -35,6 +35,7 @@ const WASM_ASSET_PATH =
   `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_TASKS_VISION_VERSION}/wasm`;
 const MODEL_ASSET_PATH =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+let nextMediaPipeTimestampMs = 0;
 
 const landmarkIndexMap = [
   [11, "left_shoulder"],
@@ -124,6 +125,21 @@ function sampleTimestamps(durationMs: number, sampleCount: number) {
   );
 }
 
+function mediaPipeTimestampsFor(
+  videoTimestampsMs: number[],
+  nextTimestampMs: number,
+) {
+  const timestamps = videoTimestampsMs.map(
+    (timestampMs) => nextTimestampMs + timestampMs,
+  );
+  const lastTimestamp = timestamps.at(-1) ?? nextTimestampMs;
+
+  return {
+    timestamps,
+    next: Math.max(nextTimestampMs, lastTimestamp + 1),
+  };
+}
+
 async function seekVideo(video: HTMLVideoElement, timestampMs: number) {
   const targetTimeSeconds = timestampMs / 1000;
 
@@ -209,12 +225,21 @@ export async function extractPoseLandmarks(
   const minimumFrames = options.minimumFrames ?? DEFAULT_MINIMUM_FRAMES;
   const poseLandmarker = await getPoseLandmarker();
   const frames: PoseFrame[] = [];
+  const videoTimestampsMs = sampleTimestamps(video.duration * 1000, sampleCount);
+  const mediaPipeTiming = mediaPipeTimestampsFor(
+    videoTimestampsMs,
+    nextMediaPipeTimestampMs,
+  );
+  nextMediaPipeTimestampMs = mediaPipeTiming.next;
 
-  for (const timestampMs of sampleTimestamps(video.duration * 1000, sampleCount)) {
+  for (const [index, timestampMs] of videoTimestampsMs.entries()) {
     await seekVideo(video, timestampMs);
     await waitForUsableVideoFrame(video);
 
-    const result = poseLandmarker.detectForVideo(video, timestampMs);
+    const result = poseLandmarker.detectForVideo(
+      video,
+      mediaPipeTiming.timestamps[index],
+    );
     const landmarks = result.landmarks[0];
     const normalizedLandmarks = landmarks
       ? normalizePoseLandmarks(landmarks)
@@ -242,6 +267,7 @@ export async function extractPoseLandmarks(
 
 export const __normalizePoseLandmarksForTest = normalizePoseLandmarks;
 export const __sampleTimestampsForTest = sampleTimestamps;
+export const __mediaPipeTimestampsForTest = mediaPipeTimestampsFor;
 export const __hasUsableVideoFrameForTest = hasUsableVideoFrame;
 export const __createCachedPoseLandmarkerForTest = createCachedPoseLandmarker;
 export const __POSE_ASSET_URLS_FOR_TEST = {
