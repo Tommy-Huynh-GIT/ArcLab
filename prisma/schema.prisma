@@ -41,6 +41,7 @@ model Metric {
   reportId String
   report   AnalysisReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   name     String
+  label    String         @default("")
   score    Int
   value    Float
   feedback String

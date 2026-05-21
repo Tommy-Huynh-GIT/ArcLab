@@ -49,7 +49,7 @@ describe("VideoUploadPanel", () => {
     );
   });
 
-  it("calls onAnalyze with the selected video file", () => {
+  it("calls onAnalyze with the selected video file and preview element", async () => {
     const onAnalyze = vi.fn();
     const file = new File(["video"], "front-view.mp4", { type: "video/mp4" });
 
@@ -59,7 +59,9 @@ describe("VideoUploadPanel", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /analyze/i }));
 
-    expect(onAnalyze).toHaveBeenCalledWith(file);
+    await waitFor(() =>
+      expect(onAnalyze).toHaveBeenCalledWith(file, expect.any(HTMLVideoElement)),
+    );
   });
 
   it("shows async analysis state while onAnalyze is running", async () => {

@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
-  onAnalyze: (file: File) => Promise<void> | void;
+  onAnalyze: (file: File, video: HTMLVideoElement) => Promise<void> | void;
 };
 
 const acceptedVideoTypes = "video/mp4,video/quicktime,video/webm";
 
 export function VideoUploadPanel({ onAnalyze }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [selectedVideo, setSelectedVideo] = useState<{
     file: File;
     previewUrl: string;
@@ -37,11 +38,16 @@ export function VideoUploadPanel({ onAnalyze }: Props) {
       return;
     }
 
+    if (!videoRef.current) {
+      setAnalysisError("Video preview is not ready yet.");
+      return;
+    }
+
     setIsAnalyzing(true);
     setAnalysisError("");
 
     try {
-      await onAnalyze(selectedVideo.file);
+      await onAnalyze(selectedVideo.file, videoRef.current);
     } catch (error) {
       setAnalysisError(
         error instanceof Error ? error.message : "Unable to analyze this video.",
@@ -87,6 +93,7 @@ export function VideoUploadPanel({ onAnalyze }: Props) {
           aria-label="Selected free throw preview"
           className="video-preview"
           controls
+          ref={videoRef}
           src={selectedVideo.previewUrl}
         />
       ) : null}
