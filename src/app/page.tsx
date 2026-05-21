@@ -9,6 +9,7 @@ import {
   ReportSummary,
   type SavedSessionReport,
 } from "@/components/report/ReportSummary";
+import { SessionHistory } from "@/components/report/SessionHistory";
 import { VideoUploadPanel } from "@/components/upload/VideoUploadPanel";
 import { extractPoseLandmarks } from "@/features/pose/extractPoseLandmarks";
 
@@ -47,12 +48,19 @@ function isSavedSession(value: unknown): value is SavedSessionReport {
 export default function Home() {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [savedSession, setSavedSession] = useState<SavedSessionReport | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [analysisStatus, setAnalysisStatus] = useState("");
   const [analysisError, setAnalysisError] = useState("");
 
   function handleSelectProfile(profile: Profile) {
     setSelectedProfile(profile);
     setSavedSession(null);
+    setAnalysisStatus("");
+    setAnalysisError("");
+  }
+
+  function handleSelectSession(session: SavedSessionReport) {
+    setSavedSession(session);
     setAnalysisStatus("");
     setAnalysisError("");
   }
@@ -100,6 +108,7 @@ export default function Home() {
       }
 
       setSavedSession(data.session);
+      setHistoryRefreshKey((currentKey) => currentKey + 1);
       setAnalysisStatus("Report saved.");
     } catch (error) {
       const message =
@@ -169,6 +178,14 @@ export default function Home() {
           <VideoUploadPanel
             key={selectedProfile.id}
             onAnalyze={saveAnalyzedSession}
+          />
+        ) : null}
+
+        {selectedProfile ? (
+          <SessionHistory
+            profileId={selectedProfile.id}
+            refreshKey={historyRefreshKey}
+            onSelectSession={handleSelectSession}
           />
         ) : null}
 

@@ -391,6 +391,60 @@ select:focus-visible {
   padding: 8px 10px;
 }
 
+.session-history {
+  grid-column: 1 / -1;
+}
+
+.history-state {
+  margin: 0;
+  border-left: 4px solid var(--accent-2);
+  background: var(--surface-2);
+  color: var(--muted);
+  line-height: 1.5;
+  padding: 14px 16px;
+}
+
+.history-error {
+  border-left-color: var(--danger);
+  background: rgba(255, 138, 138, 0.1);
+  color: var(--danger);
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-row {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(3, max-content);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.history-row:hover {
+  filter: brightness(1.08);
+}
+
+.history-title {
+  min-width: 0;
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.history-row time {
+  color: var(--muted);
+  font-size: 14px;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -432,5 +486,10 @@ button:disabled:hover {
 
   .report-score-card {
     justify-items: start;
+  }
+
+  .history-row {
+    grid-template-columns: 1fr;
+    align-items: start;
   }
 }
