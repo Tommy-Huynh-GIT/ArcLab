@@ -286,6 +286,39 @@ describe("Home", () => {
     expect(screen.queryByLabelText(/annotated replay video/i)).not.toBeInTheDocument();
   });
 
+  it("clears the current report and replay when a new file is selected", async () => {
+    extractPoseLandmarks.mockResolvedValue(balancedFreeThrow);
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /maya/i }));
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: {
+        files: [
+          new File(["video"], "maya-free-throw.webm", {
+            type: "video/webm",
+          }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    expect(await screen.findByLabelText(/annotated replay video/i)).toBeInTheDocument();
+    expect(screen.getByText("Strong balance and follow-through.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: {
+        files: [
+          new File(["next"], "next-rep.webm", {
+            type: "video/webm",
+          }),
+        ],
+      },
+    });
+
+    expect(screen.queryByLabelText(/annotated replay video/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Strong balance and follow-through.")).not.toBeInTheDocument();
+  });
+
   it("refreshes session history after a new analysis is saved", async () => {
     extractPoseLandmarks.mockResolvedValue(balancedFreeThrow);
     fetchMock.mockImplementation((input: RequestInfo | URL) => {

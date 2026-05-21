@@ -78,6 +78,13 @@ export default function Home() {
     setAnalysisError("");
   }
 
+  function handleUploadFileSelected() {
+    setSavedSession(null);
+    setCurrentReplay(null);
+    setAnalysisStatus("");
+    setAnalysisError("");
+  }
+
   async function saveAnalyzedSession(file: File, video: HTMLVideoElement) {
     if (!selectedProfile) {
       const message = "Choose a profile before analyzing a clip.";
@@ -197,6 +204,7 @@ export default function Home() {
           <VideoUploadPanel
             key={selectedProfile.id}
             onAnalyze={saveAnalyzedSession}
+            onFileSelected={handleUploadFileSelected}
           />
         ) : null}
 

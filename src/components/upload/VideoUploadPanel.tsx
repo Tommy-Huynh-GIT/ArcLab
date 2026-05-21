@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 
 type Props = {
   onAnalyze: (file: File, video: HTMLVideoElement) => Promise<void> | void;
+  onFileSelected?: () => void;
 };
 
 const acceptedVideoTypes = "video/mp4,video/quicktime,video/webm";
 
-export function VideoUploadPanel({ onAnalyze }: Props) {
+export function VideoUploadPanel({ onAnalyze, onFileSelected }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [selectedVideo, setSelectedVideo] = useState<{
     file: File;
@@ -27,6 +28,7 @@ export function VideoUploadPanel({ onAnalyze }: Props) {
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    onFileSelected?.();
     setAnalysisError("");
     setSelectedVideo(
       file ? { file, previewUrl: URL.createObjectURL(file) } : null,
