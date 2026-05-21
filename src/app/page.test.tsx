@@ -121,6 +121,8 @@ describe("Home", () => {
       configurable: true,
       value: revokeObjectURL,
     });
+
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -189,6 +191,10 @@ describe("Home", () => {
     });
     expect(await screen.findByText("Strong balance and follow-through.")).toBeInTheDocument();
     expect(screen.getByText("88")).toBeInTheDocument();
+    expect(screen.getByLabelText(/annotated replay video/i)).toHaveAttribute(
+      "src",
+      "blob:profile-upload-preview",
+    );
   });
 
   it("shows API errors without leaving the saving status visible", async () => {
@@ -253,6 +259,31 @@ describe("Home", () => {
 
     expect(await screen.findByText("Archived session report.")).toBeInTheDocument();
     expect(screen.getByText("76")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/annotated replay video/i)).not.toBeInTheDocument();
+  });
+
+  it("hides the current upload replay when selecting a saved history report", async () => {
+    extractPoseLandmarks.mockResolvedValue(balancedFreeThrow);
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /maya/i }));
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: {
+        files: [
+          new File(["video"], "maya-free-throw.webm", {
+            type: "video/webm",
+          }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    expect(await screen.findByLabelText(/annotated replay video/i)).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: /archived reps/i }));
+
+    expect(await screen.findByText("Archived session report.")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/annotated replay video/i)).not.toBeInTheDocument();
   });
 
   it("refreshes session history after a new analysis is saved", async () => {
