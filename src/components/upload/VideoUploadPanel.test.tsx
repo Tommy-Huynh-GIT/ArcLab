@@ -49,6 +49,25 @@ describe("VideoUploadPanel", () => {
     );
   });
 
+  it("notifies when a file is selected", () => {
+    const onFileSelected = vi.fn();
+    const file = new File(["video"], "maya-free-throw.webm", {
+      type: "video/webm",
+    });
+
+    render(
+      <VideoUploadPanel
+        onAnalyze={vi.fn()}
+        onFileSelected={onFileSelected}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: { files: [file] },
+    });
+
+    expect(onFileSelected).toHaveBeenCalledTimes(1);
+  });
+
   it("calls onAnalyze with the selected video file and preview element", async () => {
     const onAnalyze = vi.fn();
     const file = new File(["video"], "front-view.mp4", { type: "video/mp4" });

@@ -6,12 +6,22 @@ import {
   type Profile,
 } from "@/components/profile/ProfilePicker";
 import {
+  AnnotatedReplay,
+} from "@/components/report/AnnotatedReplay";
+import {
   ReportSummary,
   type SavedSessionReport,
 } from "@/components/report/ReportSummary";
 import { SessionHistory } from "@/components/report/SessionHistory";
 import { VideoUploadPanel } from "@/components/upload/VideoUploadPanel";
 import { extractPoseLandmarks } from "@/features/pose/extractPoseLandmarks";
+import type { PoseFrame } from "@/features/pose/types";
+
+type CurrentReplay = {
+  sessionId: string;
+  videoUrl: string;
+  frames: PoseFrame[];
+};
 
 function readApiError(data: unknown, fallback: string) {
   return data &&
@@ -51,16 +61,26 @@ export default function Home() {
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [analysisStatus, setAnalysisStatus] = useState("");
   const [analysisError, setAnalysisError] = useState("");
+  const [currentReplay, setCurrentReplay] = useState<CurrentReplay | null>(null);
 
   function handleSelectProfile(profile: Profile) {
     setSelectedProfile(profile);
     setSavedSession(null);
+    setCurrentReplay(null);
     setAnalysisStatus("");
     setAnalysisError("");
   }
 
   function handleSelectSession(session: SavedSessionReport) {
     setSavedSession(session);
+    setCurrentReplay(null);
+    setAnalysisStatus("");
+    setAnalysisError("");
+  }
+
+  function handleUploadFileSelected() {
+    setSavedSession(null);
+    setCurrentReplay(null);
     setAnalysisStatus("");
     setAnalysisError("");
   }
@@ -74,6 +94,7 @@ export default function Home() {
     }
 
     setSavedSession(null);
+    setCurrentReplay(null);
     setAnalysisError("");
     setAnalysisStatus("Extracting pose landmarks...");
 
@@ -108,6 +129,11 @@ export default function Home() {
       }
 
       setSavedSession(data.session);
+      setCurrentReplay({
+        sessionId: data.session.id,
+        videoUrl: video.currentSrc || video.src,
+        frames: pose.frames,
+      });
       setHistoryRefreshKey((currentKey) => currentKey + 1);
       setAnalysisStatus("Report saved.");
     } catch (error) {
@@ -178,6 +204,7 @@ export default function Home() {
           <VideoUploadPanel
             key={selectedProfile.id}
             onAnalyze={saveAnalyzedSession}
+            onFileSelected={handleUploadFileSelected}
           />
         ) : null}
 
@@ -186,6 +213,16 @@ export default function Home() {
             profileId={selectedProfile.id}
             refreshKey={historyRefreshKey}
             onSelectSession={handleSelectSession}
+          />
+        ) : null}
+
+        {savedSession && currentReplay?.sessionId === savedSession.id ? (
+          <AnnotatedReplay
+            frames={currentReplay.frames}
+            keyframeTimestamps={savedSession.report?.keyFrames.map(
+              (keyFrame) => keyFrame.timestampMs,
+            )}
+            videoUrl={currentReplay.videoUrl}
           />
         ) : null}
 
