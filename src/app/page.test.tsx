@@ -6,6 +6,54 @@ import Home from "./page";
 
 const extractPoseLandmarks = vi.hoisted(() => vi.fn());
 
+const savedHistorySession = {
+  id: "session_history",
+  title: "Archived reps",
+  createdAt: "2026-05-19T15:00:00.000Z",
+  report: {
+    id: "report_history",
+    overallScore: 76,
+    rank: "B",
+    summary: "Archived session report.",
+    metrics: [
+      {
+        id: "metric_history",
+        name: "releaseAngle",
+        score: 74,
+        value: 48,
+        feedback: "Release is a little flat.",
+        drill: "High arc form shots.",
+      },
+    ],
+    keyFrames: [],
+  },
+};
+
+const savedAnalysisSession = {
+  id: "session_1",
+  title: "maya-free-throw.webm",
+  createdAt: "2026-05-20T15:00:00.000Z",
+  report: {
+    id: "report_1",
+    overallScore: 88,
+    rank: "A",
+    summary: "Strong balance and follow-through.",
+    metrics: [
+      {
+        id: "metric_1",
+        name: "stanceWidth",
+        score: 91,
+        value: 1.22,
+        feedback: "Base is stable.",
+        drill: "Form shooting holds.",
+      },
+    ],
+    keyFrames: [
+      { id: "keyframe_1", label: "release", timestampMs: 700 },
+    ],
+  },
+};
+
 vi.mock("@/features/pose/extractPoseLandmarks", () => ({
   extractPoseLandmarks,
 }));
@@ -37,30 +85,22 @@ describe("Home", () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              session: {
-                id: "session_1",
-                title: "maya-free-throw.webm",
-                report: {
-                  id: "report_1",
-                  overallScore: 88,
-                  rank: "A",
-                  summary: "Strong balance and follow-through.",
-                  metrics: [
-                    {
-                      id: "metric_1",
-                      name: "stanceWidth",
-                      score: 91,
-                      value: 1.22,
-                      feedback: "Base is stable.",
-                      drill: "Form shooting holds.",
-                    },
-                  ],
-                  keyFrames: [
-                    { id: "keyframe_1", label: "release", timestampMs: 700 },
-                  ],
-                },
-              },
+              session: savedAnalysisSession,
             }),
+        });
+      }
+
+      if (url === "/api/profiles/profile_1/sessions") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sessions: [savedHistorySession] }),
+        });
+      }
+
+      if (url === "/api/profiles/profile_2/sessions") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sessions: [] }),
         });
       }
 
@@ -168,6 +208,13 @@ describe("Home", () => {
         });
       }
 
+      if (url === "/api/profiles/profile_1/sessions") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sessions: [] }),
+        });
+      }
+
       return Promise.resolve({
         ok: false,
         json: () =>
@@ -196,6 +243,83 @@ describe("Home", () => {
     ).toHaveLength(2);
     expect(screen.queryByText("Saving coaching report...")).not.toBeInTheDocument();
     expect(screen.queryByText("Extracting pose landmarks...")).not.toBeInTheDocument();
+  });
+
+  it("shows session history after selecting a profile and renders the selected saved report", async () => {
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /maya/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /archived reps/i }));
+
+    expect(await screen.findByText("Archived session report.")).toBeInTheDocument();
+    expect(screen.getByText("76")).toBeInTheDocument();
+  });
+
+  it("refreshes session history after a new analysis is saved", async () => {
+    extractPoseLandmarks.mockResolvedValue(balancedFreeThrow);
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = input.toString();
+
+      if (url === "/api/profiles") {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              profiles: [
+                { id: "profile_1", name: "Maya", handedness: "LEFT" },
+              ],
+            }),
+        });
+      }
+
+      if (url === "/api/profiles/profile_1/sessions") {
+        const matchingHistoryCalls = fetchMock.mock.calls.filter(
+          ([calledInput]) =>
+            calledInput.toString() === "/api/profiles/profile_1/sessions",
+        );
+        const sessions =
+          matchingHistoryCalls.length > 1
+            ? [savedAnalysisSession, savedHistorySession]
+            : [savedHistorySession];
+
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sessions }),
+        });
+      }
+
+      if (url === "/api/sessions") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ session: savedAnalysisSession }),
+        });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+    });
+
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /maya/i }));
+    expect(await screen.findByText("Archived reps")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/free throw clip/i), {
+      target: {
+        files: [
+          new File(["video"], "maya-free-throw.webm", {
+            type: "video/webm",
+          }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /maya-free-throw.webm/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows extraction errors without leaving the extracting status visible", async () => {
