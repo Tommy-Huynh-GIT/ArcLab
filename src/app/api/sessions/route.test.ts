@@ -76,13 +76,14 @@ describe("/api/sessions", () => {
             overallScore: 87,
             rank: "A",
             summary: "Strong balance and follow-through.",
-            metrics: {
-              create: [
-                {
-                  name: "stanceWidth",
-                  score: 91,
-                  value: 1.22,
-                  feedback: "Base is stable.",
+          metrics: {
+            create: [
+              {
+                name: "stanceWidth",
+                label: "Stance width",
+                score: 91,
+                value: 1.22,
+                feedback: "Base is stable.",
                   drill: "Form shooting holds.",
                 },
               ],
@@ -168,8 +169,9 @@ describe("/api/sessions", () => {
   });
 
   it("returns scoring validation errors without persisting", async () => {
+    const { PoseValidationError } = await import("@/features/scoring/validation");
     scoreFreeThrow.mockImplementation(() => {
-      throw new Error("At least four pose frames are required for scoring.");
+      throw new PoseValidationError("At least four pose frames are required for scoring.");
     });
 
     const { POST } = await import("./route");
@@ -187,6 +189,29 @@ describe("/api/sessions", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: "At least four pose frames are required for scoring.",
+    });
+    expect(sessionCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns a generic scoring error for unexpected runtime failures", async () => {
+    scoreFreeThrow.mockImplementation(() => {
+      throw new TypeError("frame.landmarks is not iterable");
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          profileId: "profile_1",
+          pose: { handedness: "RIGHT", frames: [{ timestampMs: 1 }] },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Unable to score this pose.",
     });
     expect(sessionCreate).not.toHaveBeenCalled();
   });

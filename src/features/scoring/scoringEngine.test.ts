@@ -206,6 +206,21 @@ describe("scoreFreeThrow", () => {
     );
   });
 
+  it("throws a controlled validation error for frames without landmark arrays", () => {
+    const malformedFrames = {
+      ...balancedFreeThrow,
+      frames: balancedFreeThrow.frames.map((frame, index) =>
+        index === 0
+          ? ({ timestampMs: frame.timestampMs } as unknown as typeof frame)
+          : frame,
+      ),
+    };
+
+    expect(() => scoreFreeThrow(malformedFrames)).toThrow(
+      "Pose frame 0 must include landmarks.",
+    );
+  });
+
   it("throws a clear validation error for tiny shoulder width", () => {
     const tinyShoulders = withLandmark(
       withLandmark(balancedFreeThrow, "left_shoulder", { x: 0.5 }),

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { scoreFreeThrow } from "@/features/scoring/scoringEngine";
+import { PoseValidationError } from "@/features/scoring/validation";
 import type { PoseAnalysisInput } from "@/features/pose/types";
 import { prisma } from "@/lib/db";
 
@@ -69,10 +70,9 @@ export async function POST(request: Request) {
   } catch (scoringError) {
     return NextResponse.json(
       {
-        error:
-          scoringError instanceof Error
-            ? scoringError.message
-            : "Unable to score this pose.",
+        error: scoringError instanceof PoseValidationError
+          ? scoringError.message
+          : "Unable to score this pose.",
       },
       { status: 400 },
     );
@@ -91,6 +91,7 @@ export async function POST(request: Request) {
             metrics: {
               create: report.metrics.map((metric) => ({
                 name: metric.name,
+                label: metric.label,
                 score: metric.score,
                 value: metric.value,
                 feedback: metric.feedback,

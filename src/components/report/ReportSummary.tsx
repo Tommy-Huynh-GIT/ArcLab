@@ -1,6 +1,7 @@
 export type SavedMetric = {
   id: string;
   name: string;
+  label?: string | null;
   score: number;
   value: number;
   feedback: string;
@@ -62,7 +63,7 @@ export function ReportSummary({ session }: Props) {
         {report.metrics.map((metric) => (
           <article className="metric-card" key={metric.id}>
             <div className="metric-card-heading">
-              <h3>{metric.name}</h3>
+              <h3>{metric.label || metric.name}</h3>
               <strong>{metric.score}</strong>
             </div>
             <p>{metric.feedback}</p>

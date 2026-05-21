@@ -16,6 +16,7 @@ const session: SavedSessionReport = {
       {
         id: "metric_1",
         name: "stanceWidth",
+        label: "Stance width",
         score: 91,
         value: 1.22,
         feedback: "Base is stable.",
@@ -36,7 +37,8 @@ describe("ReportSummary", () => {
     expect(screen.getByText("A")).toBeInTheDocument();
     expect(screen.getByText("87")).toBeInTheDocument();
     expect(screen.getByText("Strong balance and follow-through.")).toBeInTheDocument();
-    expect(screen.getByText("stanceWidth")).toBeInTheDocument();
+    expect(screen.getByText("Stance width")).toBeInTheDocument();
+    expect(screen.queryByText("stanceWidth")).not.toBeInTheDocument();
     expect(screen.getByText("Base is stable.")).toBeInTheDocument();
     expect(screen.getByText("Form shooting holds.")).toBeInTheDocument();
     expect(screen.getByText("release at 0.7s")).toBeInTheDocument();

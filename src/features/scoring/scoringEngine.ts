@@ -15,6 +15,7 @@ import {
 import type { CoachingReport, KeyFrame, MetricName, MetricScore, Rank } from "./types";
 import {
   MINIMUM_VISIBILITY,
+  PoseValidationError,
   validatePoseAnalysisInput,
 } from "./validation";
 
@@ -45,7 +46,7 @@ function visibleLandmark(
   const landmark = frame.landmarks.find((item) => item.name === name);
 
   if (!landmark || landmark.visibility < MINIMUM_VISIBILITY) {
-    throw new Error(`Missing visible landmark: ${name}`);
+    throw new PoseValidationError(`Missing visible landmark: ${name}`);
   }
 
   return landmark;
@@ -131,7 +132,7 @@ export function scoreFreeThrow(input: PoseAnalysisInput): CoachingReport {
 
   const shoulderWidth = horizontalDistance(rightShoulder, leftShoulder);
   if (shoulderWidth < 0.05) {
-    throw new Error("Shoulder width is too small to score stance reliably.");
+    throw new PoseValidationError("Shoulder width is too small to score stance reliably.");
   }
 
   const stanceWidth = horizontalDistance(rightAnkle, leftAnkle);
