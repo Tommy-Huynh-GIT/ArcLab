@@ -57,14 +57,52 @@ function getCanvasSize(video: HTMLVideoElement) {
   };
 }
 
+export function getRenderedVideoRect(
+  canvasWidth: number,
+  canvasHeight: number,
+  intrinsicWidth: number,
+  intrinsicHeight: number,
+) {
+  if (intrinsicWidth <= 0 || intrinsicHeight <= 0) {
+    return {
+      offsetX: 0,
+      offsetY: 0,
+      width: canvasWidth,
+      height: canvasHeight,
+    };
+  }
+
+  const canvasRatio = canvasWidth / canvasHeight;
+  const videoRatio = intrinsicWidth / intrinsicHeight;
+
+  if (videoRatio > canvasRatio) {
+    const height = canvasWidth / videoRatio;
+
+    return {
+      offsetX: 0,
+      offsetY: (canvasHeight - height) / 2,
+      width: canvasWidth,
+      height,
+    };
+  }
+
+  const width = canvasHeight * videoRatio;
+
+  return {
+    offsetX: (canvasWidth - width) / 2,
+    offsetY: 0,
+    width,
+    height: canvasHeight,
+  };
+}
+
 function pointForLandmark(
   landmark: NormalizedLandmark,
-  width: number,
-  height: number,
+  rect: ReturnType<typeof getRenderedVideoRect>,
 ) {
   return {
-    x: landmark.x * width,
-    y: landmark.y * height,
+    x: rect.offsetX + landmark.x * rect.width,
+    y: rect.offsetY + landmark.y * rect.height,
   };
 }
 
@@ -86,6 +124,12 @@ export function AnnotatedReplay({
     }
 
     const { width, height } = getCanvasSize(video);
+    const renderedVideoRect = getRenderedVideoRect(
+      width,
+      height,
+      video.videoWidth,
+      video.videoHeight,
+    );
     canvas.width = width;
     canvas.height = height;
     context.clearRect(0, 0, width, height);
@@ -110,8 +154,8 @@ export function AnnotatedReplay({
         continue;
       }
 
-      const startPoint = pointForLandmark(start, width, height);
-      const endPoint = pointForLandmark(end, width, height);
+      const startPoint = pointForLandmark(start, renderedVideoRect);
+      const endPoint = pointForLandmark(end, renderedVideoRect);
       context.beginPath();
       context.moveTo(startPoint.x, startPoint.y);
       context.lineTo(endPoint.x, endPoint.y);
@@ -119,7 +163,7 @@ export function AnnotatedReplay({
     }
 
     for (const landmark of frame.landmarks) {
-      const point = pointForLandmark(landmark, width, height);
+      const point = pointForLandmark(landmark, renderedVideoRect);
       context.beginPath();
       context.arc(point.x, point.y, 5, 0, Math.PI * 2);
       context.fill();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   __createCachedPoseLandmarkerForTest,
+  __hasUsableVideoFrameForTest,
   __normalizePoseLandmarksForTest,
   __POSE_ASSET_URLS_FOR_TEST,
   __sampleTimestampsForTest,
@@ -58,6 +59,42 @@ describe("pose extraction asset URLs", () => {
 describe("__sampleTimestampsForTest", () => {
   it("samples the final frame below the video duration to avoid seeking EOF", () => {
     expect(__sampleTimestampsForTest(1000, 5)).toEqual([0, 250, 500, 749, 999]);
+  });
+});
+
+describe("__hasUsableVideoFrameForTest", () => {
+  it("requires decoded frame data and non-zero video dimensions", () => {
+    const video = document.createElement("video");
+
+    Object.defineProperty(video, "readyState", {
+      configurable: true,
+      value: HTMLMediaElement.HAVE_METADATA,
+    });
+    Object.defineProperty(video, "videoWidth", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(video, "videoHeight", {
+      configurable: true,
+      value: 0,
+    });
+
+    expect(__hasUsableVideoFrameForTest(video)).toBe(false);
+
+    Object.defineProperty(video, "readyState", {
+      configurable: true,
+      value: HTMLMediaElement.HAVE_CURRENT_DATA,
+    });
+    Object.defineProperty(video, "videoWidth", {
+      configurable: true,
+      value: 720,
+    });
+    Object.defineProperty(video, "videoHeight", {
+      configurable: true,
+      value: 1280,
+    });
+
+    expect(__hasUsableVideoFrameForTest(video)).toBe(true);
   });
 });
 

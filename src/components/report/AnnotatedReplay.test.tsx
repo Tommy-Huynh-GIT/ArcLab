@@ -5,6 +5,7 @@ import { balancedFreeThrow } from "@/features/scoring/__fixtures__/freeThrowLand
 import {
   AnnotatedReplay,
   getNearestPoseFrame,
+  getRenderedVideoRect,
 } from "./AnnotatedReplay";
 
 describe("getNearestPoseFrame", () => {
@@ -17,6 +18,26 @@ describe("getNearestPoseFrame", () => {
 
     expect(getNearestPoseFrame(frames, 0.52)).toBe(frames[1]);
     expect(getNearestPoseFrame(frames, 0.91)).toBe(frames[3]);
+  });
+});
+
+describe("getRenderedVideoRect", () => {
+  it("returns the full canvas when intrinsic video dimensions are unavailable", () => {
+    expect(getRenderedVideoRect(640, 360, 0, 0)).toEqual({
+      height: 360,
+      offsetX: 0,
+      offsetY: 0,
+      width: 640,
+    });
+  });
+
+  it("centers portrait video content inside a landscape stage", () => {
+    expect(getRenderedVideoRect(640, 360, 720, 1280)).toEqual({
+      height: 360,
+      offsetX: 218.75,
+      offsetY: 0,
+      width: 202.5,
+    });
   });
 });
 
@@ -98,5 +119,42 @@ describe("AnnotatedReplay", () => {
     expect(
       calls.some((call) => /^arc:339\.\d+:28\.\d+/.test(call)),
     ).toBe(true);
+  });
+
+  it("draws landmarks inside the rendered video area for portrait clips", () => {
+    render(
+      <AnnotatedReplay
+        frames={balancedFreeThrow.frames}
+        videoUrl="blob:portrait-free-throw"
+      />,
+    );
+
+    const video = screen.getByLabelText(/annotated replay video/i);
+
+    Object.defineProperty(video, "clientWidth", {
+      configurable: true,
+      value: 640,
+    });
+    Object.defineProperty(video, "clientHeight", {
+      configurable: true,
+      value: 360,
+    });
+    Object.defineProperty(video, "videoWidth", {
+      configurable: true,
+      value: 720,
+    });
+    Object.defineProperty(video, "videoHeight", {
+      configurable: true,
+      value: 1280,
+    });
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      value: 0,
+    });
+
+    fireEvent.loadedMetadata(video);
+
+    expect(calls).toContain("moveTo:303.8:79.2");
+    expect(calls).toContain("lineTo:336.2:79.2");
   });
 });

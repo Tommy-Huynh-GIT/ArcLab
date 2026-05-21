@@ -151,6 +151,44 @@ async function seekVideo(video: HTMLVideoElement, timestampMs: number) {
   });
 }
 
+function hasUsableVideoFrame(video: HTMLVideoElement) {
+  return (
+    video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+    video.videoWidth > 0 &&
+    video.videoHeight > 0
+  );
+}
+
+async function waitForUsableVideoFrame(video: HTMLVideoElement) {
+  if (hasUsableVideoFrame(video)) {
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      video.removeEventListener("loadeddata", handleLoadedFrame);
+      video.removeEventListener("canplay", handleLoadedFrame);
+      video.removeEventListener("error", handleError);
+    };
+    const handleLoadedFrame = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error("Unable to decode a frame from the selected video."));
+    };
+
+    video.addEventListener("loadeddata", handleLoadedFrame, { once: true });
+    video.addEventListener("canplay", handleLoadedFrame, { once: true });
+    video.addEventListener("error", handleError, { once: true });
+  });
+
+  if (!hasUsableVideoFrame(video)) {
+    throw new Error("Video frame data is not ready for pose extraction.");
+  }
+}
+
 function assertLoadedVideo(video: HTMLVideoElement) {
   if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
     throw new Error("Video metadata must be loaded before extracting pose landmarks.");
@@ -174,6 +212,7 @@ export async function extractPoseLandmarks(
 
   for (const timestampMs of sampleTimestamps(video.duration * 1000, sampleCount)) {
     await seekVideo(video, timestampMs);
+    await waitForUsableVideoFrame(video);
 
     const result = poseLandmarker.detectForVideo(video, timestampMs);
     const landmarks = result.landmarks[0];
@@ -203,6 +242,7 @@ export async function extractPoseLandmarks(
 
 export const __normalizePoseLandmarksForTest = normalizePoseLandmarks;
 export const __sampleTimestampsForTest = sampleTimestamps;
+export const __hasUsableVideoFrameForTest = hasUsableVideoFrame;
 export const __createCachedPoseLandmarkerForTest = createCachedPoseLandmarker;
 export const __POSE_ASSET_URLS_FOR_TEST = {
   wasm: WASM_ASSET_PATH,
